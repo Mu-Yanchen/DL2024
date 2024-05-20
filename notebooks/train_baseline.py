@@ -8,7 +8,7 @@ add_sep_token = True
 candidate_size = -1  # -1 represents the complete training set
 num_prompt = 3
 
-model = "text-davinci-003"
+# model = "text-davinci-003"
 temperature = 0.7
 max_tokens = 1200
 top_p = 1
@@ -27,6 +27,23 @@ from src.preprocess import create_processor
 from src.utils import RAW_DATA_PATH, read_pt, write_pt, read_json
 from tqdm import tqdm
 import json
+
+import ast
+import csv
+from pathlib import Path
+
+import numpy as np
+import torch
+from trtllm_utils import (DEFAULT_HF_MODEL_DIRS, DEFAULT_PROMPT_TEMPLATES,
+                   load_tokenizer, read_model_name, throttle_generator)
+
+import tensorrt_llm
+import tensorrt_llm.profiler
+from tensorrt_llm.logger import logger
+from tensorrt_llm.runtime import PYTHON_BINDINGS, ModelRunner
+
+if PYTHON_BINDINGS:
+    from tensorrt_llm.runtime import ModelRunnerCpp
 
 processor = create_processor(dataset=dataset, task=task)
 base_dir = '/scratch/muyanchen/LayoutGeneration-main/LayoutPrompter/'#os.path.dirname(os.getcwd())
@@ -115,7 +132,10 @@ def generate(model, tokenizer, text):
 
     # generated_ids = model.generate(**model_inputs, max_new_tokens=200, do_sample=True)
     # generated_ids = model.generate(**model_inputs,max_new_tokens=1200,do_sample=True)
-    generated_ids = model.generate(**model_inputs, do_sample=True,num_beams=num_return,num_return_sequences=num_return)
+    generated_ids = model.generate(**model_inputs,
+                                   do_sample=False,
+                                   num_beams=2,
+                                   num_return_sequences=num_return)
     decoded = tokenizer.batch_decode(generated_ids)
     # print(decoded[0])
     return decoded[0]
@@ -132,7 +152,7 @@ model, tokenizer = init_model()
 parser = Parser_HF(dataset=dataset, output_format=output_format)
 save_json_content = []
 
-for ii in tqdm(range(20)):#(range(len(dataset))):
+for ii in tqdm(range(len(dataset))):
     test_data = data_set.__getitem__(ii)
     exemplars = selector(test_data)
     prompt = build_prompt(serializer, exemplars, test_data, dataset)
@@ -152,5 +172,5 @@ for ii in tqdm(range(20)):#(range(len(dataset))):
     )
 
 
-json_file = open('/scratch/muyanchen/LayoutGeneration-main/LayoutPrompter/dataset/webui/processed/text/result.json', mode='w')
+json_file = open('result.json', mode='w')
 json.dump(save_json_content, json_file, indent=4) 
