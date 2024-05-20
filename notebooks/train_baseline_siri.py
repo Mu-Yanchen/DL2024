@@ -175,12 +175,14 @@ for ii in tqdm(range(len(data_set))):
     exemplars = selector(test_data)
     prompt = build_prompt(serializer, exemplars, test_data, dataset)
     print("Prompt: \n", prompt)
-    prompt_json = json.dumps(prompt)
+
+    json_prompt = {"input": prompt}
+    prompt_json = json.dumps(json_prompt)
     prompts_json_list.append(prompt_json)
 
-with open('prompts.jsonl', 'w', encoding='utf-8') as file:
+with open('prompts.jsonl', 'w', encoding='utf-8') as json_file:
     for prompt_json in prompts_json_list:
-        file.write(prompt_json + '\n')
+        json_file.write(prompt_json + '\n')
 '''
 
     out = generate(model, tokenizer, prompt)
