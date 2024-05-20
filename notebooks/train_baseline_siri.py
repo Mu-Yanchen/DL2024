@@ -52,6 +52,9 @@ def parse_args():
     parser.add_argument('--model_path', type=str, required=True, help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset directory')
     parser.add_argument('--output_path', type=str, required=True, help='Path to save the output JSON file')
+    parser.add_argument('--infer', type=str, required=True, help='Path to inference results')
+    parser.add_argument('--stage', type=int, default=1,
+                        help='1 for infer with tranformers, 2 for save prompt, 3 for gen result')
     return parser.parse_args()
 
 args = parse_args()
@@ -127,13 +130,15 @@ def init_model(cuda_info='auto'):
         bnb_4bit_compute_dtype=torch.bfloat16
     )
     '''
-
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        model_id,
-        trust_remote_code=True,
-        # quantization_config=bnb_config,
-        device_map=cuda_info,
-    )
+    if args.stage == 1:
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            model_id,
+            trust_remote_code=True,
+            # quantization_config=bnb_config,
+            device_map=cuda_info,
+        )
+    else:
+        model = None
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_id,
@@ -169,6 +174,13 @@ save_json_content = []
 print("Dataset size: ", len(data_set))
 
 prompts_json_list = []
+data_list = []
+
+if args.stage == 3:
+    with open(args.infer, 'r', encoding='utf-8') as file:
+        for line in file:
+            data = json.loads(line)
+            data_list.append(data['completion'])
 
 for ii in tqdm(range(len(data_set))):
     test_data = data_set.__getitem__(ii)
@@ -178,30 +190,45 @@ for ii in tqdm(range(len(data_set))):
 
     json_prompt = {"input": prompt}
     prompt_json = json.dumps(json_prompt)
-    prompts_json_list.append(prompt_json)
+    if args.stage == 2:
+        prompts_json_list.append(prompt_json)
 
-with open('prompts.jsonl', 'w', encoding='utf-8') as json_file:
-    for prompt_json in prompts_json_list:
-        json_file.write(prompt_json + '\n')
-'''
+    if args.stage == 1:
+        out = generate(model, tokenizer, prompt)
+        print("Response: \n", out)
+        response = [extract_html_content(out,test_data['text'])]
+        parsed_response = parser(response)
+        print("Layout: \n", parsed_response)
+        save_json_content.append({
+            'line_id': ii,
+            'region_id': test_data['region_id'],
+            'text': test_data['text'],
+            'constraint': test_data['execution'],
+            'gold_layout_seq': test_data['plain_layout_seq'],
+            'prediction': parsed_response}
+        )
 
-    out = generate(model, tokenizer, prompt)
-    print("Response: \n", out)
-    response = [extract_html_content(out,test_data['text'])]
-    parsed_response = parser(response)
-    print("Layout: \n", parsed_response)
+    if args.stage == 3:
+        out = data_list[ii]
+        print("Response: \n", out)
+        response = [extract_html_content(out,test_data['text'])]
+        parsed_response = parser(response)
+        print("Layout: \n", parsed_response)
+        save_json_content.append({
+            'line_id': ii,
+            'region_id': test_data['region_id'],
+            'text': test_data['text'],
+            'constraint': test_data['execution'],
+            'gold_layout_seq': test_data['plain_layout_seq'],
+            'prediction': parsed_response}
+        )
 
-    
-    save_json_content.append({
-        'line_id': ii,
-        'region_id': test_data['region_id'],
-        'text': test_data['text'],
-        'constraint': test_data['execution'],
-        'gold_layout_seq': test_data['plain_layout_seq'],
-        'prediction': parsed_response}
-    )
+if args.stage == 2:
+    with open('prompts.jsonl', 'w', encoding='utf-8') as json_file:
+        for prompt_json in prompts_json_list:
+            json_file.write(prompt_json + '\n')
 
-json_file = open(args.output_path, mode='w')
-json.dump(save_json_content, json_file, indent=4)
-json_file.close()
-'''
+if args.stage == 1 or 3:
+    json_file = open(args.output_path, mode='w')
+    json.dump(save_json_content, json_file, indent=4)
+    json_file.close()
