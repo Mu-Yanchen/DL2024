@@ -8,9 +8,9 @@ add_sep_token = True
 candidate_size = -1  # -1 represents the complete training set
 num_prompt = 3
 
-model = "text-davinci-003"
-temperature = 0.7
-max_tokens = 1200
+# model = "text-davinci-003"
+# temperature = 0.7
+max_tokens = 2048
 top_p = 1
 frequency_penalty = 0
 presence_penalty = 0
@@ -28,20 +28,49 @@ from src.utils import RAW_DATA_PATH, read_pt, write_pt, read_json
 from tqdm import tqdm
 import json
 
+import ast
+import csv
+from pathlib import Path
+
+import numpy as np
+'''
+from trtllm_utils import (DEFAULT_HF_MODEL_DIRS, DEFAULT_PROMPT_TEMPLATES,
+                   load_tokenizer, read_model_name, throttle_generator)
+
+import tensorrt_llm
+import tensorrt_llm.profiler
+from tensorrt_llm.logger import logger
+from tensorrt_llm.runtime import PYTHON_BINDINGS, ModelRunner
+
+if PYTHON_BINDINGS:
+    from tensorrt_llm.runtime import ModelRunnerCpp
+'''
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser.add_argument('--model_path', type=str, required=True, help='Path to the model directory')
+    parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset directory')
+    parser.add_argument('--output_path', type=str, required=True, help='Path to save the output JSON file')
+    return parser.parse_args()
+
+args = parse_args()
+
 processor = create_processor(dataset=dataset, task=task)
-base_dir = '/scratch/muyanchen/LayoutGeneration-main/LayoutPrompter/'#os.path.dirname(os.getcwd())
+base_dir = args.dataset_path
 
 def get_processed_data(split):
     # filename = os.path.join(
     #     base_dir, "dataset", dataset, "processed", task, f"{split}.pt"
     # )
-    filename = f'/scratch/muyanchen/LayoutGeneration-main/LayoutPrompter/dataset/webui/processed/text/{split}.pt'
+    filename = os.path.join(
+        base_dir, "dataset", dataset, "processed", task, f"{split}.pt")
     if os.path.exists(filename):
         processed_data = read_pt(filename)
     else:
         processed_data = []
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        raw_path = os.path.join(base_dir, "dataset", dataset, "raw", f"{split}.json")
+        raw_path = os.path.join(base_dir, dataset, "raw", f"{split}.json")
         raw_data = read_json(raw_path)
         for rd in tqdm(raw_data, desc=f"{split} data processing..."):
             processed_data.append(processor(rd))
@@ -89,18 +118,20 @@ serializer = create_serializer(
 )
 
 def init_model(cuda_info='auto'):
-    model_id = "/scratch/muyanchen/LLM/models--meta-llama--Llama-2-13b-chat-hf/"
+    model_id = args.model_path
+    '''
     bnb_config = transformers.BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16
     )
+    '''
 
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_id,
         trust_remote_code=True,
-        quantization_config=bnb_config,
+        # quantization_config=bnb_config,
         device_map=cuda_info,
     )
 
@@ -115,7 +146,11 @@ def generate(model, tokenizer, text):
 
     # generated_ids = model.generate(**model_inputs, max_new_tokens=200, do_sample=True)
     # generated_ids = model.generate(**model_inputs,max_new_tokens=1200,do_sample=True)
-    generated_ids = model.generate(**model_inputs, do_sample=True,num_beams=num_return,num_return_sequences=num_return)
+    generated_ids = model.generate(**model_inputs,
+                                   do_sample=False,
+                                   num_beams=num_return,
+                                   num_return_sequences=num_return,
+                                   max_length=max_tokens)
     decoded = tokenizer.batch_decode(generated_ids)
     # print(decoded[0])
     return decoded[0]
@@ -131,15 +166,28 @@ def extract_html_content(html_text, search_text):
 model, tokenizer = init_model()
 parser = Parser_HF(dataset=dataset, output_format=output_format)
 save_json_content = []
+print("Dataset size: ", len(data_set))
 
-for ii in tqdm(range(20)):#(range(len(dataset))):
+prompts_json_list = []
+
+for ii in tqdm(range(len(data_set))):
     test_data = data_set.__getitem__(ii)
     exemplars = selector(test_data)
     prompt = build_prompt(serializer, exemplars, test_data, dataset)
+    print("Prompt: \n", prompt)
+    prompt_json = json.dumps(prompt)
+    prompts_json_list.append(prompt_json)
+
+with open('prompts.jsonl', 'w', encoding='utf-8') as file:
+    for prompt_json in prompts_json_list:
+        file.write(prompt_json + '\n')
+'''
 
     out = generate(model, tokenizer, prompt)
+    print("Response: \n", out)
     response = [extract_html_content(out,test_data['text'])]
     parsed_response = parser(response)
+    print("Layout: \n", parsed_response)
 
     
     save_json_content.append({
@@ -151,6 +199,7 @@ for ii in tqdm(range(20)):#(range(len(dataset))):
         'prediction': parsed_response}
     )
 
-
-json_file = open('/scratch/muyanchen/LayoutGeneration-main/LayoutPrompter/dataset/webui/processed/text/result.json', mode='w')
-json.dump(save_json_content, json_file, indent=4) 
+json_file = open(args.output_path, mode='w')
+json.dump(save_json_content, json_file, indent=4)
+json_file.close()
+'''
