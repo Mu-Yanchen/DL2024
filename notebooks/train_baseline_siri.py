@@ -160,6 +160,7 @@ def generate(model, tokenizer, text):
     # print(decoded[0])
     return decoded[0]
 
+'''
 def extract_html_content(html_text, search_text):
     pattern = re.compile(re.escape(search_text) + r'(.*?)</html>', re.DOTALL)
     match = pattern.search(html_text)
@@ -167,6 +168,8 @@ def extract_html_content(html_text, search_text):
         return search_text + match.group(1) + '</html>'
     else:
         return "No match found."
+'''
+from utils import extract_html_content_siri
 
 model, tokenizer = init_model()
 parser = Parser_HF(dataset=dataset, output_format=output_format)
@@ -196,7 +199,7 @@ for ii in tqdm(range(len(data_set))):
     if args.stage == 1:
         out = generate(model, tokenizer, prompt)
         print("Response: \n", out)
-        response = [extract_html_content(out,test_data['text'])]
+        response = [extract_html_content_siri(out,test_data['text'])]
         parsed_response = parser(response)
         print("Layout: \n", parsed_response)
         save_json_content.append({
@@ -211,7 +214,7 @@ for ii in tqdm(range(len(data_set))):
     if args.stage == 3:
         out = data_list[ii]
         print("Response: \n", out)
-        response = [extract_html_content(out,test_data['text'])]
+        response = [extract_html_content_siri(out,test_data['text'])]
         parsed_response = parser(response)
         print("Layout: \n", parsed_response)
         save_json_content.append({
