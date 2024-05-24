@@ -9,7 +9,7 @@ def extract_html_content(html_text, search_text):
         return "No match found."
 
 def extract_html_content_siri(html_text):
-    match = re.search(r'^.*</html>', html_text, re.DOTALL)
+    match = re.search(r'^.*?<\/html>', html_text, re.DOTALL)
     if match:
         return match.group()# + '</html>'
     else:
