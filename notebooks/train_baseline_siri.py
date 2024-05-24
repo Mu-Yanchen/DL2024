@@ -171,7 +171,8 @@ def extract_html_content(html_text, search_text):
 '''
 from utils import extract_html_content_siri
 
-model, tokenizer = init_model()
+if args.stage == 1:
+    model, tokenizer = init_model()
 parser = Parser_HF(dataset=dataset, output_format=output_format)
 save_json_content = []
 print("Dataset size: ", len(data_set))
