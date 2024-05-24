@@ -1,4 +1,5 @@
 dataset = "webui"
+task = "text"
 input_format = "seq"
 output_format = "html"
 add_unk_token = False
@@ -59,7 +60,7 @@ def parse_args():
 
 args = parse_args()
 
-processor = create_processor(dataset=dataset, task=args.task)
+processor = create_processor(dataset=dataset, task=task)
 base_dir = args.dataset_path
 
 def get_processed_data(split):
@@ -67,7 +68,7 @@ def get_processed_data(split):
     #     base_dir, "dataset", dataset, "processed", task, f"{split}.pt"
     # )
     filename = os.path.join(
-        base_dir, "dataset", dataset, "processed", args.task, f"{split}.pt")
+        base_dir, "dataset", dataset, "processed", task, f"{split}.pt")
     if os.path.exists(filename):
         processed_data = read_pt(filename)
     else:
@@ -91,7 +92,7 @@ import transformers
 from src.parsing import Parser_HF
 
 selector = create_selector(
-    task=args.task,
+    task=task,
     train_data=processed_train_data,
     candidate_size=candidate_size,
     num_prompt=num_prompt,
