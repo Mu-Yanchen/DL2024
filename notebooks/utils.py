@@ -15,7 +15,7 @@ def extract_html_content_siri(html_text):
     else:
         return "No match found."
 
-
+'''
 text1 = """Text: A page for an introduction to the product. The page has three groups of information. Each group contains a title , a description, and a button for users to click to get further information.
 <html>
 <body>
@@ -43,3 +43,4 @@ text2 = """<html>
 </html>
 """
 print(extract_html_content_siri(text2))
+'''
