@@ -59,7 +59,7 @@ def parse_args():
 
 args = parse_args()
 
-processor = create_processor(dataset=dataset, task=task)
+processor = create_processor(dataset=dataset, task=args.task)
 base_dir = args.dataset_path
 
 def get_processed_data(split):
@@ -67,7 +67,7 @@ def get_processed_data(split):
     #     base_dir, "dataset", dataset, "processed", task, f"{split}.pt"
     # )
     filename = os.path.join(
-        base_dir, "dataset", dataset, "processed", task, f"{split}.pt")
+        base_dir, "dataset", dataset, "processed", args.task, f"{split}.pt")
     if os.path.exists(filename):
         processed_data = read_pt(filename)
     else:
@@ -112,7 +112,7 @@ data_set = Web()
 
 serializer = create_serializer(
     dataset=dataset,
-    task=task,
+    task=args.task,
     input_format=input_format,
     output_format=output_format,
     add_index_token=add_index_token,
