@@ -1,5 +1,4 @@
 dataset = "webui"
-task = "text"
 input_format = "seq"
 output_format = "html"
 add_unk_token = False
@@ -52,9 +51,10 @@ def parse_args():
     parser.add_argument('--model_path', type=str, required=True, help='Path to the model directory')
     parser.add_argument('--dataset_path', type=str, required=True, help='Path to the dataset directory')
     parser.add_argument('--output_path', type=str, required=True, help='Path to save the output JSON file')
-    parser.add_argument('--infer', type=str, required=True, help='Path to inference results')
+    parser.add_argument('--inferred_res', type=str, default=None, help='Path to inference results')
     parser.add_argument('--stage', type=int, default=1,
                         help='1 for infer with tranformers, 2 for save prompt, 3 for gen result')
+    parser.add_argument('--task', type=str, default='text', help='Task type: text or ir')
     return parser.parse_args()
 
 args = parse_args()
@@ -91,7 +91,7 @@ import transformers
 from src.parsing import Parser_HF
 
 selector = create_selector(
-    task=task,
+    task=args.task,
     train_data=processed_train_data,
     candidate_size=candidate_size,
     num_prompt=num_prompt,
