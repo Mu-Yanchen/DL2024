@@ -182,7 +182,7 @@ prompts_json_list = []
 data_list = []
 
 if args.stage == 3:
-    with open(args.infer, 'r', encoding='utf-8') as file:
+    with open(args.inferred_res, 'r', encoding='utf-8') as file:
         for line in file:
             data = json.loads(line)
             data_list.append(data['completion'])
